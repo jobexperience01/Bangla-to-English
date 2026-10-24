@@ -1429,13 +1429,38 @@ $('#rlist').innerHTML=FIX.filter(f=>f[2]).map(f=>{const[a,b]=f[2].split('|');ret
  const R=window.SpeechRecognition||window.webkitSpeechRecognition,el=id=>document.getElementById(id);
  let autoL='bn-BD',lastRes=Date.now(),on=false,rec=null,micOK=true,off=0,speaking=false,wl=null,chain=Promise.resolve(),tm=null,log=[];
  const st=(t,c)=>{el('lst').textContent=t;el('lst').style.color=c||''};
+ // ---- duplicate guard: phones re-send the same speech (often cut shorter each time)
+ let ignoreUntil=0,pendT=null,pendTxt='',recent=[];
+ const wn=s=>s.toLowerCase().replace(/[।?!.,;:"'’“”\-]/g,' ').replace(/\s+/g,' ').trim();
+ function flushMic(){
+  const c=pendTxt.trim();pendTxt='';if(!c)return;
+  const n=wn(c),now=Date.now();recent=recent.filter(r=>now-r.t<20000);
+  if(!n)return;
+  if(recent.some(r=>r.n===n||(' '+r.n+' ').includes(' '+n+' ')))return;      // same or shorter piece of something already handled
+  let out=c;const ext=recent.find(r=>n.startsWith(r.n+' '));
+  if(ext){out=c.split(/\s+/).slice(ext.n.split(' ').length).join(' ');if(!wn(out))return}   // user continued: handle only the new words
+  if(wn(out).split(' ').length<2&&!/[\u0980-\u09FF]{4,}/.test(out))return;     // lone stray word = noise
+  if(/[\u0980-\u09FF]/.test(out)&&wn(out).split(' ').length<2)return;
+  recent.push({n,t:now});handle(out);
+ }
+ function micIn(f){
+  const a=wn(pendTxt),b=wn(f);
+  if(!b)return;const nw=Date.now();recent=recent.filter(r=>nw-r.t<20000);
+  if(recent.some(r=>r.n===b||(' '+r.n+' ').includes(' '+b+' ')))return;          // echo of something already handled
+  if(/[\u0980-\u09FF]/.test(f)&&b.split(' ').length<2)return;                     // one stray Bangla word = noise
+  if(!a||b.includes(a)||b.startsWith(a))pendTxt=f;               // newer, longer version replaces the older piece
+  else if(a.includes(b))return;                                   // shorter echo of what we already hold
+  else pendTxt+=' '+f;                                            // a genuinely new piece
+  clearTimeout(pendT);pendT=setTimeout(flushMic,1100);
+ }
+
  ['lsp','lau'].forEach(id=>{const v=ls.get('live_'+id);if(v!==null)el(id).checked=v==='1';el(id).onchange=()=>ls.set('live_'+id,el(id).checked?'1':'0')});
  const lv=ls.get('live_lang');if(lv)el('llang').value=lv;el('llang').onchange=()=>{ls.set('live_lang',el('llang').value);if(on&&rec){try{rec.abort()}catch(e){}}};
  function speak(t,again){if(!el('lsp').checked)return;const u=new SpeechSynthesisUtterance(t);u.lang='en-US';u.rate=+el('lrate').value;
   const vs=speechSynthesis.getVoices().filter(v=>/^en/i.test(v.lang)),vn=el('lvoice').value,vv=vs.find(v=>v.name===vn)||vs.find(v=>/natural|neural|google us|samantha/i.test(v.name))||vs[0];if(vv)u.voice=vv;
   if(el('lrep').checked&&!again)setTimeout(()=>speak(t,1),0);
-  u.onstart=()=>{speaking=true;st('🔊 ইংরেজি বাজছে…','var(--g)');if(rec){try{rec.abort()}catch(e){}}};
-  u.onend=u.onerror=()=>{if(!speechSynthesis.pending&&!speechSynthesis.speaking){speaking=false;if(on&&micOK)setTimeout(startMic,400)}};
+  u.onstart=()=>{speaking=true;pendTxt='';clearTimeout(pendT);st('🔊 ইংরেজি বাজছে…','var(--g)');if(rec){try{rec.abort()}catch(e){}}};
+  u.onend=u.onerror=()=>{ignoreUntil=Date.now()+1500;pendTxt='';clearTimeout(pendT);if(!speechSynthesis.pending&&!speechSynthesis.speaking){speaking=false;if(on&&micOK)setTimeout(startMic,400)}};
   u.onerror=e=>{speaking=false;st('🔇 Sound বাজেনি ('+(e.error||'error')+'). Volume/Media volume দেখুন, আর কীবোর্ডের mic বন্ধ রাখুন','var(--r)');if(on&&micOK)setTimeout(startMic,400)};
   try{speechSynthesis.resume()}catch(e){}
   speechSynthesis.speak(u)}
@@ -1459,8 +1484,8 @@ $('#rlist').innerHTML=FIX.filter(f=>f[2]).map(f=>{const[a,b]=f[2].split('|');ret
   if(!on||!R||!micOK||speaking)return;
   try{rec&&rec.abort()}catch(e){}
   rec=new R();rec.lang=el('llang').value==='auto'?autoL:el('llang').value;lastRes=Date.now();rec.continuous=true;rec.interimResults=true;
-  rec.onresult=e=>{lastRes=Date.now();let f='',im='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)f+=t+' ';else im+=t}
-   el('lint').textContent=im;if(f.trim())handle(f.trim())};
+  rec.onresult=e=>{lastRes=Date.now();let f='',im='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal){const cf=e.results[i][0].confidence;if(!(cf>0&&cf<.55))f+=t+' '}else im+=t}
+   el('lint').textContent=im;if(f.trim()&&Date.now()>=ignoreUntil)micIn(f.trim())};
   rec.onerror=e=>{if(/not-allowed|service-not-allowed/.test(e.error)){micOK=false;st('🚫 Mic blocked. নিচের বক্সে কীবোর্ডের 🎤 দিয়ে বলুন — সেটাও নিজে নিজে চলবে।','var(--r)')}};
   rec.onend=()=>{if(on&&micOK&&!speaking)setTimeout(startMic,300)};
   try{rec.start();st('🔴 শুনছি… Stop না চাপা পর্যন্ত চলবে','var(--g)')}catch(e){}
@@ -1468,7 +1493,7 @@ $('#rlist').innerHTML=FIX.filter(f=>f[2]).map(f=>{const[a,b]=f[2].split('|');ret
  async function lock(){try{wl=await navigator.wakeLock.request('screen')}catch(e){}}
  function start(){on=true;micOK=true;try{speechSynthesis.cancel();const p=new SpeechSynthesisUtterance('Live mode is on.');p.lang='en-US';speechSynthesis.speak(p)}catch(e){}el('lgo').textContent='⏹ Stop';el('lgo').className='s';lock();el('lkb').focus();
   if(R)startMic();else st('⌨️ নিচের বক্সে কীবোর্ডের 🎤 দিয়ে বলুন','var(--g)')}
- function stop(){on=false;try{rec&&rec.abort()}catch(e){}speechSynthesis.cancel();speaking=false;try{wl&&wl.release()}catch(e){}
+ function stop(){on=false;pendTxt='';clearTimeout(pendT);recent=[];try{rec&&rec.abort()}catch(e){}speechSynthesis.cancel();speaking=false;try{wl&&wl.release()}catch(e){}
   el('lgo').textContent='▶️ Start';el('lgo').className='p';st('⏹ বন্ধ');el('lint').textContent=''}
  setInterval(()=>{if(on&&micOK&&!speaking&&el('llang').value==='auto'&&Date.now()-lastRes>5000){autoL=autoL==='bn-BD'?'en-US':'bn-BD';startMic()}},1000);
  el('lgo').onclick=()=>on?stop():start();
