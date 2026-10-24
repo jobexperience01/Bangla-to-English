@@ -108,13 +108,20 @@ input,textarea,select{width:100%;padding:10px;border:1px solid var(--b);border-r
   <div class="m">কোনো API key লাগে না · No API key needed. Everything runs on your device.</div>
   <div style="border-top:1px solid var(--b);margin-top:10px;padding-top:8px"><b>✨ Smart AI (ঐচ্ছিক · optional)</b>
   <div class="m">সবচেয়ে ভালো ইংরেজির জন্য। ইন্টারনেট ও API key লাগে। বন্ধ রাখলে অ্যাপ আগের মতোই চলবে। Key শুধু এই ব্রাউজারে থাকে, আর আপনার বাক্য সেই প্রোভাইডারের কাছে যায়। · Best English quality. Needs internet and an API key. Key stays in this browser; your sentence is sent to that provider.</div>
-  <select id="aiprov"><option value="none">Off / বন্ধ</option><option value="gemini">Google Gemini (free key)</option><option value="claude">Anthropic Claude</option></select>
+  <select id="aiprov"><option value="none">Off / বন্ধ</option><option value="gemini">Google Gemini (free key)</option><option value="groq">Groq (free key, very fast)</option><option value="claude">Anthropic Claude</option></select>
   <input id="aikey" type="password" placeholder="API key">
-  <input id="aimodel" placeholder="Model (optional: gemini-2.5-flash / claude-haiku-5-5)">
+  <input id="aimodel" placeholder="Model (optional: gemini-2.5-flash / llama-3.3-70b-versatile / claude-haiku-5-5)">
   <label class="m" style="display:block;margin:8px 0"><input type="checkbox" id="aisyson" style="width:auto" checked> 🧠 Master prompt ব্যবহার করুন · Use master prompt for AI translation</label>
   <textarea id="aisys" rows="6" placeholder="Master prompt"></textarea>
   <button class="s" id="aisysreset">↺ Default prompt</button>
   <button class="p" id="aisave">Save / সেভ</button><div class="m" id="aist"></div></div>
+  <div style="border-top:1px solid var(--b);margin-top:10px;padding-top:8px"><b>📦 Offline pack · অফলাইন প্যাক (ঐচ্ছিক · optional)</b>
+   <div class="m">একবার ডাউনলোড করলে ইন্টারনেট ছাড়াই ভালো মানের অনুবাদ (NLLB-200, Meta)। প্রায় ০.৬–১ GB, তাই Wi-Fi ব্যবহার করুন। শুধু https ঠিকানা থেকে চলে (যেমন GitHub Pages), ফাইল হিসেবে খুললে চলে না। এটি শুধু অনুবাদ করে, Master prompt মানে না। · Downloads once (about 0.6–1 GB, use Wi-Fi), then translates Bangla→English with no internet. Needs an https address, not a local file. It only translates; it cannot follow the master prompt.</div>
+   <label class="m" style="display:block;margin:8px 0"><input type="checkbox" id="nllbon" style="width:auto" checked> 📦 অফলাইন প্যাক ব্যবহার করুন · Use offline pack when the browser translator and Smart AI cannot answer</label>
+   <button class="p" id="nllbdl">⬇️ Download offline pack</button>
+   <button class="s" id="nllbdel">🗑 Remove pack</button>
+   <div class="bar" style="margin-top:6px"><i id="nllbbar" style="width:0%"></i></div>
+   <div class="m" id="nllbst"></div></div>
   <label class="m" style="display:block;margin:8px 0"><input type="checkbox" id="onl" style="width:auto" checked> 🌍 অফলাইন ইঞ্জিন না পারলে ফ্রি অনলাইন অনুবাদক (key লাগে না) · Use a free online translator only when the offline engine is unsure. Your sentence is sent to api.mymemory.translated.net. Untick to stay fully offline.</label>
   <div class="m" id="stat" style="margin-top:8px"></div>
  </div>
@@ -1070,6 +1077,16 @@ function fixOffer(host,orig,en,ok,cb){
 
 const MASTER_PROMPT="# MASTER PROMPT: EXPERT BANGLA–ENGLISH TRANSLATOR & NATIVE-LEVEL WRITER\n\n## ROLE AND OBJECTIVE\n\nYou are an expert Bangla–English translator, a native-level writer in both languages, and a practical English-language editor and coach.\n\nYour job is to make every translation or rewritten sentence sound natural, fluent, accurate, and appropriate for its context—as if an educated native speaker had originally written it.\n\nPrioritize meaning, intent, tone, context, and natural expression over literal word-for-word translation. Never produce awkward, robotic, unnecessarily formal, or machine-like language.\n\n## 1. CORE RULES\n\n### 1.1 Preserve meaning and intent\n- Preserve the original message's exact meaning, purpose, and intended implication.\n- Translate ideas rather than individual words.\n- Restructure sentences to follow the target language's natural grammar and word order.\n- Never invent facts, assume missing information, exaggerate, weaken the message, or omit meaningful details.\n- Do not change the speaker's position, certainty, emotion, responsibility, or intended level of politeness.\n- If a phrase has multiple plausible meanings, use the surrounding context. Ask a brief clarification only when the ambiguity materially affects the result.\n\n### 1.2 Preserve tone and register\n- Respect the original relationship between the speakers.\n- In Bangla, preserve the distinction between তুই, তুমি, and আপনি according to context.\n- Keep casual language casual, respectful language respectful, and formal language formal.\n- For everyday English, use natural contractions when appropriate, such as I'm, don't, can't, and we'll.\n- For professional messages, use clear, courteous, confident, and natural English without unnecessary corporate jargon.\n- Preserve humor, frustration, warmth, hesitation, sarcasm, and other meaningful emotional cues.\n\n### 1.3 Use correct grammar\n- Use the correct tense, aspect, articles, prepositions, pronouns, subject–verb agreement, and singular or plural forms.\n- Interpret Bangla verb forms in context rather than relying on mechanical suffix matching.\n- Distinguish among completed past actions, ongoing actions, habitual actions, present results, and future intentions.\n- Use natural English sentence structure and natural, contemporary চলিত বাংলা unless another register is requested.\n- Correct grammar and awkward phrasing without changing the intended message.\n\n### 1.4 Translate expressions naturally\n- Translate idioms, proverbs, phrasal verbs, slang, and culturally specific expressions by meaning.\n- Do not translate expressions literally when doing so would sound unnatural or misleading.\n- Preserve forms of address such as ভাই, আপু, দাদা, স্যার, and ম্যাডাম when relevant; use the appropriate English equivalent or omit the address only when natural and faithful to the context.\n- Interpret cues such as তাই না?, না, একটু, বেশ, খুব, তো, আর, ও, and ই according to their contextual meaning, emphasis, and conversational function.\n- Preserve softeners, polite requests, indirect questions, and implied disagreement.\n\n### 1.5 Protect factual accuracy\n- Preserve all names, places, dates, numbers, measurements, units, technical terms, and other factual details.\n- Use established English spellings for names when known; otherwise use consistent, reasonable transliteration.\n- Do not convert, round, reinterpret, or silently correct numbers or dates unless explicitly requested.\n- Do not invent explanations, events, relationships, motivations, or background information.\n- Correct obvious spelling, typing, punctuation, and speech-recognition errors silently when the intended wording is clear.\n- If an error could change the meaning, ask for clarification rather than guessing.\n\n## 2. AUTOMATIC MODES\n\nDetect the appropriate mode from the input. I may also specify a mode explicitly.\n\n### MODE A — BANGLA TO ENGLISH (BN → EN)\nTranslate Bangla into natural, fluent, everyday or professional English as required by context.\n- Use idiomatic, native-sounding English.\n- Reorder sentences naturally instead of preserving Bangla word order.\n- Choose appropriate articles, prepositions, tense, and expressions.\n- Preserve the original tone, level of certainty, and intended meaning.\n- Prefer simple, commonly used English when it communicates the same meaning accurately.\n\n### MODE B — ENGLISH TO BANGLA (EN → BN)\nTranslate English into natural, contemporary spoken Bangla using চলিত ভাষা by default.\n- Make the result sound like something a fluent Bangla speaker would naturally say.\n- Use appropriate pronouns, honorifics, sentence endings, and conversational expressions.\n- Avoid unnecessary সাধুভাষা, overly literary vocabulary, and English sentence structures copied into Bangla.\n- Use formal Bangla or সাধুভাষা only when requested or clearly required by context.\n\n### MODE C — ENGLISH CORRECTION AND REWRITING (EN → EN)\nCorrect and rewrite my English while preserving my original meaning and tone.\n- Fix grammar, spelling, word choice, punctuation, sentence structure, and flow.\n- Remove unnecessary repetition and awkward expressions.\n- Keep the original message's length and level of detail reasonably close unless a shorter or longer version is requested.\n- Make casual messages sound like natural conversations.\n- Make workplace messages professional, respectful, clear, and direct without making them stiff.\n- Never add claims, excuses, promises, apologies, or emotional emphasis that I did not intend.\n\n### MODE D — BANGLISH TO CLEAN LANGUAGE\nWhen I write Bangla using English letters, mixed Bangla and English, phonetic spellings, abbreviations, or speech-to-text output, identify the intended meaning and produce clean text in the appropriate target language.\n- Infer the source language and intended target from the words, context, and task.\n- Correct obvious phonetic spelling and transcription errors.\n- Do not mistake an English technical term, proper noun, or acronym for an error.\n- If I write an English sentence in Banglish and appear to want it corrected, return natural English.\n- If I write Banglish and appear to want Bangla, return proper Bangla script.\n- If the intended target cannot reasonably be determined, ask one short clarification.\n\n### MODE E — CONTEXTUAL MESSAGE WRITING\nWhen I provide a conversation, incoming message, workplace incident, email, group-chat discussion, or partial reply and ask what to say:\n- Understand the relevant context and the relationship between the speakers.\n- Draft a reply that addresses the actual message or situation.\n- Follow my explicit instructions about what to include, exclude, emphasize, or avoid.\n- Preserve the facts and distinguish what I know from what I suspect.\n- Match the communication channel: WhatsApp, text message, email, workplace report, academic communication, or formal correspondence.\n- Do not repeat points unnecessarily.\n- Do not add greetings, names, titles, sign-offs, or courtesy phrases unless appropriate or requested.\n\n## 3. PROFESSIONAL AND EVERYDAY ENGLISH\n\nFor everyday conversation:\n- Prefer short, natural sentences and familiar vocabulary.\n- Preserve the speaker's personality and conversational rhythm.\n- Avoid textbook expressions that people rarely use in real conversation.\n\nFor workplace communication:\n- Be respectful, factual, concise, and clear.\n- Use professional English without sounding artificial or excessively formal.\n- Report events in the correct chronological order.\n- Clearly distinguish observed facts, reported information, uncertainty, and possible explanations.\n- Do not make accusations or present assumptions as established facts.\n\nFor academic communication:\n- Maintain precision, appropriate terminology, and a professional scholarly tone.\n- Preserve technical meaning and evidence-based claims.\n- Do not fabricate citations, results, sources, or research findings.\n\n## 4. OUTPUT RULES\n\n### Default output\nReturn only the final translated or corrected text.\n- Do not introduce the answer with phrases such as \"Here is the translation\" or \"A better version would be.\"\n- Do not add explanations, grammar lessons, alternatives, headings, greetings, quotation marks, or notes unless requested or required by the task.\n- Preserve paragraph breaks, lists, labels, and formatting when they carry meaning.\n- If I request a single sentence, return one sentence.\n- If I request a complete message, provide the complete ready-to-send message.\n- If I ask for multiple versions, provide only the requested number of versions.\n\n### EXPLAIN or TEACH mode\nWhen I explicitly write \"explain\" or \"teach\", provide:\n1. **Best version:** The most natural translation or correction.\n2. **Alternative:** One additional natural version, using an appropriate casual or formal tone.\n3. **Key grammar:** One concise explanation of the relevant tense, grammar structure, or sentence pattern.\n4. **New words:** Two or three useful words or phrases with their meanings.\n\nKeep the explanation practical, easy to understand, and relevant to the original sentence. Use Bangla explanations when that would make the lesson easier to understand.\n\nIf I request only a particular part of this teaching format, provide only that part.\n\n## 5. CONTEXT AND CORRECTIONS\n\n- Use the conversation history and any relevant context I provide to interpret pronouns, references, implied subjects, and incomplete sentences.\n- Apply my latest explicit correction or instruction over an earlier conflicting preference.\n- When I say \"full\", \"complete\", \"another version\", \"more professional\", \"shorter\", \"casual\", or \"change this part\", modify the existing draft accordingly rather than restarting without reason.\n- If I say not to use a particular word or expression, do not use it in that draft.\n- If I ask you to include a detail, ensure that it appears in the final version.\n- Do not repeatedly ask questions when the intended meaning is already clear.\n- Never claim that an action happened, a person agreed, or a fact was verified unless the available information supports it.\n\n## 6. SILENT QUALITY-CONTROL CHECK\n\nBefore answering, silently verify:\n1. Is the intended meaning fully preserved?\n2. Does the wording sound natural to an educated native speaker?\n3. Is the tense and grammar correct?\n4. Is the tone appropriate for the relationship and situation?\n5. Are all names, dates, numbers, facts, and important details accurate?\n6. Have I added anything unsupported or omitted anything meaningful?\n7. Is the result ready to use without further editing?\n8. Have I followed the requested output format exactly?\n\nIf any answer is unsatisfactory, revise the text before responding.\n\n## FINAL OPERATING PRINCIPLE\n\nMy goal is not merely to translate words. My goal is to communicate the exact message I intend, in the way a fluent and educated native speaker would naturally communicate it.\n\n**Default to translation or correction only. Explain, teach, offer alternatives, or add commentary only when I explicitly request it.**";
 const sysPrompt=()=>(ls.get('aiSysOn')==='0')?'':((ls.get('aiSys')||'').trim()||MASTER_PROMPT);
+// default model per provider; a saved model name that belongs to another provider is ignored
+const AI_DEF={gemini:'gemini-2.5-flash',claude:'claude-haiku-5-5',groq:'llama-3.3-70b-versatile'};
+const AI_RE={gemini:/^(gemini|gemma)/i,claude:/^claude/i,groq:/^(?!gemini|claude)/i};
+function aiModelFor(p){const m=(ls.get('aiModel')||'').trim();return m&&AI_RE[p].test(m)?m:AI_DEF[p]}
+async function groqChat(key,m,sys,user,ctl,maxTok){
+  const msgs=(sys?[{role:'system',content:sys}]:[]).concat([{role:'user',content:user}]);
+  const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model:m,messages:msgs,temperature:.2,max_tokens:maxTok||300})});
+  const j=await r.json();if(!r.ok)throw Error((j.error&&j.error.message)||r.status);
+  return (j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content)||'';
+}
 async function aiTr(text){
  window._aiErr='';
  const prov=ls.get('aiProv')||'none',key=ls.get('aiKey')||'';
@@ -1081,12 +1098,14 @@ async function aiTr(text){
  try{
   let out='';
   if(prov==='gemini'){
-   const m=ls.get('aiModel')||'gemini-2.5-flash';
+   const m=aiModelFor('gemini');
    const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(m)+':generateContent',{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(Object.assign({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:.2}},SYS?{systemInstruction:{parts:[{text:SYS}]}}:{}))});
    const j=await r.json();if(!r.ok)throw Error((j.error&&j.error.message)||r.status);
    out=j.candidates[0].content.parts.map(p=>p.text||'').join('');
+  }else if(prov==='groq'){
+   out=await groqChat(key,aiModelFor('groq'),SYS,prompt,ctl,300);
   }else{
-   const m=ls.get('aiModel')||'claude-haiku-5-5';
+   const m=aiModelFor('claude');
    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(Object.assign({model:m,max_tokens:300,messages:[{role:'user',content:prompt}]},SYS?{system:SYS}:{}))});
    const j=await r.json();if(!r.ok)throw Error((j.error&&j.error.message)||r.status);
    out=j.content.map(p=>p.text||'').join('');
@@ -1095,6 +1114,45 @@ async function aiTr(text){
   out=out.trim().replace(/^["'\s]+|["'\s]+$/g,'');
   return out&&!/[\u0980-\u09FF]/.test(out)?out:null;
  }catch(e){clearTimeout(to);window._aiErr=String(e.message||e).slice(0,80);return null}
+}
+// ---------- Offline pack: NLLB-200 (Meta) via Transformers.js, runs in the browser, cached on the device
+const NLLB_LIB='https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1';
+const NLLB_MODEL='Xenova/nllb-200-distilled-600M';
+let _nllb=null,_nllbP=null,_nllbQ=Promise.resolve();
+function nllbSet(msg,pct){const s=$('#nllbst');if(s)s.textContent=msg;const b=$('#nllbbar');if(b&&pct!=null)b.style.width=Math.max(0,Math.min(100,pct))+'%'}
+async function nllbLoad(){
+  if(_nllb)return _nllb;
+  if(_nllbP)return _nllbP;
+  _nllbP=(async()=>{
+    if(!window.isSecureContext)throw Error('needs an https address (open the app from GitHub Pages, not as a local file)');
+    const T=await import(NLLB_LIB);
+    T.env.allowLocalModels=false;T.env.useBrowserCache=true;
+    try{if(navigator.storage&&navigator.storage.persist)await navigator.storage.persist()}catch(e){}
+    const fp={};
+    return await T.pipeline('translation',NLLB_MODEL,{dtype:'q8',progress_callback:d=>{
+      if(d.file&&d.total&&(d.status==='progress'||d.status==='download'))fp[d.file]={l:d.loaded||0,t:d.total};
+      if(d.status==='done'&&d.file&&fp[d.file])fp[d.file].l=fp[d.file].t;
+      if(d.status==='progress'||d.status==='done'){
+        let L=0,Tt=0;for(const k in fp){L+=fp[k].l;Tt+=fp[k].t}
+        if(Tt)nllbSet('⬇️ '+Math.round(L/1048576)+' / '+Math.round(Tt/1048576)+' MB',100*L/Tt);
+      }else if(d.status==='ready')nllbSet('⏳ Starting…',100);
+    }});
+  })();
+  try{_nllb=await _nllbP;ls.set('nllbReady','1');return _nllb}catch(e){_nllbP=null;throw e}
+}
+function nllbRun(p,text){
+  // one translation at a time (the model runs on a single thread anyway)
+  const job=_nllbQ.then(()=>p(text,{src_lang:'ben_Beng',tgt_lang:'eng_Latn',max_new_tokens:200}));
+  _nllbQ=job.catch(()=>{});return job;
+}
+async function nllbTr(text){
+  if(ls.get('nllbOn')==='0'||ls.get('nllbReady')!=='1')return null;
+  try{
+    const p=await nllbLoad();
+    const o=await nllbRun(p,text);
+    const t=((o&&o[0]&&o[0].translation_text)||'').trim();
+    return t&&!/[\u0980-\u09FF]/.test(t)&&!BADW.test(t)?t:null;
+  }catch(e){window._nllbErr=String(e.message||e).slice(0,80);return null}
 }
 async function bnToEn(seg){
  const rawO=window.offTranslate(seg);if(/exact/.test(rawO.pattern))return{t:rawO.english,how:rawO.pattern,ok:1};
@@ -1109,7 +1167,9 @@ async function bnToEn(seg){
  if(n)return{t:n,how:'🌐 browser translator (on your device)',ok:1};
  const a=await aiTr(seg);
  if(a)return{t:a,how:'✨ Smart AI',ok:1};
- const aiNote=window._aiErr?' · AI error: '+window._aiErr:'';
+ const nl=await nllbTr(seg);
+ if(nl)return{t:nl,how:'📦 offline pack (NLLB, on your device)',ok:1};
+ const aiNote=(window._aiErr?' · AI error: '+window._aiErr:'')+(window._nllbErr?' · offline pack error: '+window._nllbErr:'');
  const w=await onlineTr(slangNorm(normBn(seg)));
  if(w)return{t:w,how:'🌍 free online translator (may be wrong, please check)'+aiNote,ok:0};
  return{t:o.english.replace(/^≈ /,''),how:o.pattern+aiNote,ok:0};
@@ -1217,7 +1277,8 @@ $('#target').addEventListener('input',()=>ls.set('target',$('#target').value));
   if('LanguageModel' in self){const a=await LanguageModel.availability({expectedInputs:[{type:'text',languages:['en']}],expectedOutputs:[{type:'text',languages:['en']}]});L.push('🤖 On-device simplifier: '+(st[a]||a))}
   else L.push('🤖 On-device simplifier: not in this browser — easy-word list is used');
  }catch(e){L.push('🤖 On-device simplifier: not available — easy-word list is used')}
- $('#stat').innerHTML=L.map(esc).join('<br>');
+ L.push('📦 Offline pack (NLLB): '+(ls.get('nllbReady')==='1'?'downloaded ✅':'not downloaded (optional, see below)'));
+  $('#stat').innerHTML=L.map(esc).join('<br>');
 })();
 
 $('#onl').checked=ls.get('online')!=='0';$('#onl').onchange=()=>ls.set('online',$('#onl').checked?'1':'0');
@@ -1225,6 +1286,24 @@ $('#aiprov').value=ls.get('aiProv')||'none';$('#aikey').value=ls.get('aiKey')||'
 $('#aisys').value=ls.get('aiSys')||MASTER_PROMPT;$('#aisyson').checked=ls.get('aiSysOn')!=='0';
 $('#aisysreset').onclick=()=>{$('#aisys').value=MASTER_PROMPT;ls.set('aiSys','');$('#aist').textContent='Default restored ✓'};
 $('#aisave').onclick=()=>{ls.set('aiSysOn',$('#aisyson').checked?'1':'0');ls.set('aiSys',$('#aisys').value.trim()===MASTER_PROMPT.trim()?'':$('#aisys').value.trim());ls.set('aiProv',$('#aiprov').value);ls.set('aiKey',$('#aikey').value.trim());ls.set('aiModel',$('#aimodel').value.trim());$('#aist').textContent='Saved ✓'};
+// ---------- offline pack buttons
+$('#nllbon').checked=ls.get('nllbOn')!=='0';$('#nllbon').onchange=()=>ls.set('nllbOn',$('#nllbon').checked?'1':'0');
+(()=>{if(ls.get('nllbReady')==='1')nllbSet('✅ Offline pack is on this device (it loads the first time it is used)',100);else nllbSet('Not downloaded yet.',0)})();
+$('#nllbdl').onclick=async()=>{
+  if(_nllb){nllbSet('✅ Already ready.',100);return}
+  if(!navigator.onLine&&ls.get('nllbReady')!=='1'){nllbSet('⚠️ Internet is needed once to download.');return}
+  const b=$('#nllbdl');b.disabled=true;nllbSet('⏳ Starting…',0);
+  try{
+    const p=await nllbLoad();
+    const o=await nllbRun(p,'আমি ভাত খাচ্ছি');
+    nllbSet('✅ Ready. Test: আমি ভাত খাচ্ছি → '+((o&&o[0]&&o[0].translation_text)||'?'),100);
+  }catch(e){nllbSet('⚠️ '+String(e.message||e).slice(0,160),0)}
+  b.disabled=false;
+};
+$('#nllbdel').onclick=async()=>{
+  try{await caches.delete('transformers-cache')}catch(e){}
+  _nllb=null;_nllbP=null;ls.set('nllbReady','0');nllbSet('🗑 Removed from this device.',0);
+};
 // ---------- structures
 const STRUCT_START=`Present simple|Subject + verb(s)|আমি প্রতিদিন স্কুলে যাই।|I go to school every day.|সে চা খায়।|He drinks tea.
 Present continuous|Subject + am/is/are + verb-ing|আমি বই পড়ছি।|I am reading a book.|তারা খেলছে।|They are playing.
@@ -1418,10 +1497,11 @@ async function aiAsk(prompt){
  if(prov==='none'||!key||!navigator.onLine)return null;
  const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),12000);
  try{let out;
-  if(prov==='gemini'){const m=ls.get('aiModel')||'gemini-2.5-flash';
+  if(prov==='gemini'){const m=aiModelFor('gemini');
    const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(m)+':generateContent',{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:.2}})});
    const j=await r.json();if(!r.ok)throw 0;out=j.candidates[0].content.parts.map(p=>p.text||'').join('');
-  }else{const m=ls.get('aiModel')||'claude-haiku-5-5';
+  }else if(prov==='groq'){out=await groqChat(key,aiModelFor('groq'),'',prompt,ctl,300);
+  }else{const m=aiModelFor('claude');
    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:m,max_tokens:300,messages:[{role:'user',content:prompt}]})});
    const j=await r.json();if(!r.ok)throw 0;out=j.content.map(p=>p.text||'').join('');}
   clearTimeout(to);return out.trim();
